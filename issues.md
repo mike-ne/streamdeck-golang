@@ -10,7 +10,7 @@ Here is what we see in the StreamDeck logs (`~/Library/Logs/ElgatoStreamDeck/Str
 09:18:13.8118 void ESDCustomPlugin::onNativeProcessFinished(): The plugin 'Golang Do Nothing Plugin' exited normally with code 2
 09:18:13.8120 void ESDCustomPlugin::restartNativeProcess(): Restarting plugin 'Golang Do Nothing Plugin' in 0 seconds(s)
 09:18:13.8332 void ESDCustomPlugin::onNativeProcessFinished(): The plugin 'Golang Do Nothing Plugin' exited normally with code 2
-09:18:13.8333 void ESDCustomPlugin::restartNativeProcess(): Restarting plugin 'Golang Do Nothing Plugin' in 60 seconds(s) This seems to imply that my Plugin is struggling to stay running for some reason.
+09:18:13.8333 void ESDCustomPlugin::restartNativeProcess(): Restarting plugin 'Golang Do Nothing Plugin' in 60 seconds(s)
 ```
 
 Here is what we see in our plugin logs ($TMPDIR/streamdeck-godonothing-log-*):
