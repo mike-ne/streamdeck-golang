@@ -1,0 +1,32 @@
+{
+    "Actions": [
+        {
+            "Icon": "my_icon",
+            "Name": "Golang Do Nothing Plugin",
+            "States": [
+                {
+                    "Image": "my_icon"
+                }
+            ], 
+            "Tooltip": "Do Nothing",
+            "UUID": "com.mnelis.godonothing.action"
+        }
+    ], 
+    "Author": "Mike Nelis",
+    "CodePath": "bin/main",
+    "Description": "This plugin really does nothing. It is just an example.",
+    "Name": "Golang Do Nothing Plugin",
+    "Icon": "my_icon",
+    "URL": "",
+    "Version": "0.1",
+    "SDKVersion": 2,
+    "Software": {
+        "MinimumVersion" : "4.1" 
+    },
+    "OS": [
+        {
+            "Platform": "mac",
+            "MinimumVersion" : "10.11"
+        }
+    ]
+}
