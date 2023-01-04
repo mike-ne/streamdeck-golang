@@ -3,6 +3,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -45,19 +46,16 @@ func handleMessagesForever(conn *websocket.Conn) {
 			return
 		}
 
-		log.Println("Got message from StreamDeck: ", message)
+		messageStr := string(message)
+
+		log.Println("Got message from StreamDeck: ", messageStr)
 
 		// Parse our JSON message into a map of strings.
 		// https://stackoverflow.com/questions/28859941/whats-the-golang-equivalent-of-converting-any-json-to-standard-dict-in-python
-		var eventDataRoot map[string]interface{}
-		err = json.Unmarshal(message, &eventDataRoot)
+		var eventData map[string]interface{}
+		err = json.Unmarshal(message, &eventData)
 		if err != nil {
 			log.Println("Unable to parse event JSON: ", err)
-			return
-		}
-		eventData, ok := eventDataRoot["data"].(map[string]interface{})
-		if !ok {
-			log.Println("Unable to parse event JSON root node")
 			return
 		}
 
@@ -65,31 +63,40 @@ func handleMessagesForever(conn *websocket.Conn) {
 		// action := eventData["action"]
 		context := eventData["context"]
 
-		if event == "keyDown" {
-			jsonPayload := eventData["payload"].(map[string]interface{})
+		if event == "deviceDidConnect" {
+			deviceId := eventData["device"]
+			log.Println("Reigstered plugin with StreamDeck device:", deviceId)
+		} else if event == "keyDown" {
+			jsonPayload, ok := eventData["payload"].(map[string]interface{})
 			if !ok {
 				log.Println("Unable to read payload from JSON event data")
 				return
+			} else {
+				log.Println("Got KeyDown event")
 			}
 			settings := jsonPayload["settings"]
 			coordinates := jsonPayload["coordinates"]
 			userDesiredState := jsonPayload["userDesiredState"]
 			onKeyDown(context, settings, coordinates, userDesiredState)
 		} else if event == "keyUp" {
-			jsonPayload := eventData["payload"].(map[string]interface{})
+			jsonPayload, ok := eventData["payload"].(map[string]interface{})
 			if !ok {
 				log.Println("Unable to read payload from JSON event data")
 				return
+			} else {
+				log.Println("Got KeyUp event")
 			}
 			settings := jsonPayload["settings"]
 			coordinates := jsonPayload["coordinates"]
 			userDesiredState := jsonPayload["userDesiredState"]
 			onKeyUp(context, settings, coordinates, userDesiredState)
 		} else if event == "willAppear" {
-			jsonPayload := eventData["payload"].(map[string]interface{})
+			jsonPayload, ok := eventData["payload"].(map[string]interface{})
 			if !ok {
 				log.Println("Unable to read payload from JSON event data")
 				return
+			} else {
+				log.Println("Got WillAppear event")
 			}
 			settings := jsonPayload["settings"]
 			coordinates := jsonPayload["coordinates"]
@@ -99,25 +106,38 @@ func handleMessagesForever(conn *websocket.Conn) {
 }
 
 func main() {
-	inPort := os.Args[1]
-	inPluginUUID := os.Args[2]
-	inRegisterEvent := os.Args[3]
-	// inInfo := os.Args[4]
-
 	logFile := setupLogging()
 	defer logFile.Close()
 
 	log.Println("Starting Golang DoNothing StreamDeck Plugin")
 	var stBuilder strings.Builder
 	for _, arg := range os.Args[1:] {
-		stBuilder.WriteString(fmt.Sprintf("%s, ", arg))
+		stBuilder.WriteString(fmt.Sprintf("%s ", arg))
 	}
 	log.Println("Command line arguments: ", stBuilder.String())
+
+	var inPort string
+	var inPluginUUID string
+	var inRegisterEvent string
+	var inInfo string
+	flag.StringVar(&inPort, "port", "", "-port <port number>")
+	flag.StringVar(&inPluginUUID, "pluginUUID", "", "-pluginUUID <UUID of the plugin>")
+	flag.StringVar(&inRegisterEvent, "registerEvent", "", "-registerEvent <name of the event to register your plugin>")
+	flag.StringVar(&inInfo, "info", "", "-info <info about the StreamDeck environment>")
+	flag.Parse() // after declaring flags we need to call it
+
+	log.Println("Port:", inPort)
+	log.Println("Plugin UUID:", inPluginUUID)
+	log.Println("Register Event:", inRegisterEvent)
+	log.Println("Info:", inInfo)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	conn, _, _ := websocket.DefaultDialer.Dial(fmt.Sprintf("ws://127.0.0.1:%s", inPort), nil)
+	conn, _, connectErr := websocket.DefaultDialer.Dial(fmt.Sprintf("ws://127.0.0.1:%s", inPort), nil)
+	if connectErr != nil {
+		log.Fatal("Unable to connect to StreamDeck:", connectErr)
+	}
 	defer conn.Close()
 
 	log.Println("Connected to StreamDeck server")
@@ -134,7 +154,10 @@ func main() {
 		"uuid": "%s"
 	}`
 	connect_message := fmt.Sprintf(connect_message_template, inRegisterEvent, inPluginUUID)
-	conn.WriteMessage(websocket.TextMessage, []byte(connect_message))
+	registerErr := conn.WriteMessage(websocket.TextMessage, []byte(connect_message))
+	if registerErr != nil {
+		log.Fatal("Unable to send Register message to StreamDeck:", registerErr)
+	}
 
 	log.Println("Plugin registered")
 
@@ -145,9 +168,9 @@ func main() {
 
 	// Cleanly close the connection by sending a close message and then
 	// waiting (with timeout) for the server to close the connection.
-	err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	if err != nil {
-		log.Println("write close:", err)
+	disconnectErr := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	if disconnectErr != nil {
+		log.Println("Unable to cleanly disconnect from StreamDeck:", disconnectErr)
 		return
 	}
 }
